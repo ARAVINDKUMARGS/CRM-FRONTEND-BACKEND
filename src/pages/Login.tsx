@@ -1,49 +1,58 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { Sparkles, AlertCircle } from 'lucide-react';
-import { mockUsers } from '../data/mockData';
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { Sparkles, AlertCircle } from 'lucide-react'
+import { mockUsers } from '../data/mockData'
+import { login as supabaseLogin } from '../services/auth.service' // ✅ added
 
 const Login = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [selectedRole, setSelectedRole] = useState('');
-  const { login, user } = useAuth();
-  const navigate = useNavigate();
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [selectedRole, setSelectedRole] = useState('')
+  const { user } = useAuth() // ❌ removed login from context
+  const navigate = useNavigate()
 
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      navigate('/dashboard')
     }
-  }, [user, navigate]);
+  }, [user, navigate])
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+    e.preventDefault()
+    setError('')
 
+    // ✅ role-based quick login (unchanged logic)
     if (selectedRole) {
-      // Quick login with role selection
-      const roleUser = mockUsers.find(u => u.role === selectedRole);
+      const roleUser = mockUsers.find(u => u.role === selectedRole)
       if (roleUser) {
-        const success = await login(roleUser.email, 'password');
-        if (success) {
-          navigate('/dashboard');
-        } else {
-          setError('Login failed');
+        const { data, error } = await supabaseLogin(roleUser.email, 'password') // 🔧 fixed
+        if (error) {
+          setError(error.message)
+        } else if (data.session) {
+          navigate('/dashboard')
         }
-      }
-    } else if (email && password) {
-      const success = await login(email, password);
-      if (success) {
-        navigate('/dashboard');
       } else {
-        setError('Invalid email or password');
+        setError('Login failed')
       }
-    } else {
-      setError('Please enter email and password or select a role');
+      return
     }
-  };
+
+    // ✅ normal email/password login (unchanged flow)
+    if (email && password) {
+      const { data, error } = await supabaseLogin(email, password) // 🔧 fixed
+
+      if (error) {
+        setError('Invalid email or password')
+      } else if (data.session) {
+        navigate('/dashboard')
+      }
+      return
+    }
+
+    setError('Please enter email and password or select a role')
+  }
 
   const roles = [
     'System Admin',
@@ -51,7 +60,7 @@ const Login = () => {
     'Sales Executive',
     'Marketing Executive',
     'Support Executive'
-  ];
+  ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-100 flex items-center justify-center px-4">
@@ -60,9 +69,13 @@ const Login = () => {
           <div className="text-center mb-8">
             <div className="flex items-center justify-center mb-4">
               <Sparkles className="w-10 h-10 text-primary-600" />
-              <span className="ml-2 text-2xl font-bold text-gray-900">CRM Pro</span>
+              <span className="ml-2 text-2xl font-bold text-gray-900">
+                CRM Pro
+              </span>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Welcome Back
+            </h2>
             <p className="text-gray-600">Sign in to your account</p>
           </div>
 
@@ -143,7 +156,7 @@ const Login = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Login;
+export default Login
